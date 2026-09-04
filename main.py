@@ -58,4 +58,18 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             answer = ask_ai(text)
             await update.message.reply_text(answer)
-        except Exception
+        except Exception as e:
+            await update.message.reply_text(f"❌ خطا:\n{e}")
+
+        return
+
+    if text == "🤖 هوش مصنوعی":
+        waiting_ai.add(user_id)
+        await update.message.reply_text("💬 سوالت را بپرس.")
+
+    elif text == "📝 یادداشت":
+        waiting_note.add(user_id)
+        await update.message.reply_text("✍️ متن یادداشت را ارسال کن.")
+
+    elif text == "📋 یادداشت‌ها":
+        notes = await get_notes
