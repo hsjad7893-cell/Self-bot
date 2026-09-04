@@ -4,12 +4,13 @@ DB_NAME = "assistant.db"
 
 async def create_db():
     async with aiosqlite.connect(DB_NAME) as db:
+
         await db.execute("""
         CREATE TABLE IF NOT EXISTS users(
             user_id INTEGER PRIMARY KEY,
             username TEXT,
             first_name TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
 
@@ -29,13 +30,37 @@ async def add_user(user):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
             """
-            INSERT OR IGNORE INTO users(user_id, username, first_name)
+            INSERT OR IGNORE INTO users(user_id,username,first_name)
             VALUES(?,?,?)
             """,
             (
                 user.id,
                 user.username,
-                user.first_name
-            )
+                user.first_name,
+            ),
         )
         await db.commit()
+
+
+async def add_note(user_id, text):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            "INSERT INTO notes(user_id,text) VALUES(?,?)",
+            (user_id, text),
+        )
+        await db.commit()
+
+
+async def get_notes(user_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            "SELECT text FROM notes WHERE user_id=? ORDER BY id DESC",
+            (user_id,),
+        )
+        return await cursor.fetchall()
+
+
+async def users_count():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM users")
+        result =
