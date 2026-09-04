@@ -2,9 +2,9 @@ import aiosqlite
 
 DB_NAME = "assistant.db"
 
+
 async def create_db():
     async with aiosqlite.connect(DB_NAME) as db:
-
         await db.execute("""
         CREATE TABLE IF NOT EXISTS users(
             user_id INTEGER PRIMARY KEY,
@@ -30,8 +30,8 @@ async def add_user(user):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
             """
-            INSERT OR IGNORE INTO users(user_id,username,first_name)
-            VALUES(?,?,?)
+            INSERT OR IGNORE INTO users(user_id, username, first_name)
+            VALUES (?, ?, ?)
             """,
             (
                 user.id,
@@ -45,7 +45,7 @@ async def add_user(user):
 async def add_note(user_id, text):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
-            "INSERT INTO notes(user_id,text) VALUES(?,?)",
+            "INSERT INTO notes(user_id, text) VALUES(?, ?)",
             (user_id, text),
         )
         await db.commit()
@@ -63,4 +63,5 @@ async def get_notes(user_id):
 async def users_count():
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("SELECT COUNT(*) FROM users")
-        result =
+        result = await cursor.fetchone()
+        return result[0]
