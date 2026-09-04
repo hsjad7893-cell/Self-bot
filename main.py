@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -8,71 +8,80 @@ from telegram.ext import (
 )
 
 from config import BOT_TOKEN, BOT_NAME
-from keyboards.main import main_menu
+from database import create_db, add_user, add_note, get_notes
+
+menu = ReplyKeyboardMarkup(
+    [
+        ["📝 یادداشت", "📋 یادداشت‌ها"],
+        ["👤 پروفایل", "ℹ️ درباره ربات"],
+    ],
+    resize_keyboard=True,
+)
+
+waiting_note = set()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await create_db()
+    await add_user(update.effective_user)
+
     await update.message.reply_text(
-        f"👋 به {BOT_NAME} خوش اومدی.\n\nیکی از گزینه‌های زیر را انتخاب کن.",
-        reply_markup=main_menu(),
+        f"👋 به {BOT_NAME} خوش اومدی.",
+        reply_markup=menu,
     )
 
 
-async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     text = update.message.text
 
-    if text == "👤 پروفایل":
-        user = update.effective_user
-        await update.message.reply_text(
-            f"👤 نام: {user.first_name}\n"
-            f"🆔 آیدی: {user.id}\n"
-            f"📛 یوزرنیم: @{user.username or '-'}"
-        )
+    if user_id in waiting_note:
+        await add_note(user_id, text)
+        waiting_note.remove(user_id)
+        await update.message.reply_text("✅ یادداشت ذخیره شد.")
+        return
 
-    elif text == "🤖 هوش مصنوعی":
-        await update.message.reply_text("🚧 بخش هوش مصنوعی به‌زودی اضافه می‌شود.")
-
-    elif text == "📝 یادداشت":
-        await update.message.reply_text("🚧 بخش یادداشت به‌زودی اضافه می‌شود.")
+    if text == "📝 یادداشت":
+        waiting_note.add(user_id)
+        await update.message.reply_text("✍️ متن یادداشت را ارسال کن.")
 
     elif text == "📋 یادداشت‌ها":
-        await update.message.reply_text("🚧 بخش نمایش یادداشت‌ها به‌زودی اضافه می‌شود.")
+        notes = await get_notes(user_id)
 
-    elif text == "⏰ یادآوری":
-        await update.message.reply_text("🚧 بخش یادآوری به‌زودی اضافه می‌شود.")
+        if not notes:
+            await update.message.reply_text("📂 هنوز یادداشتی نداری.")
+            return
 
-    elif text == "📁 فایل‌ها":
-        await update.message.reply_text("🚧 بخش فایل‌ها به‌زودی اضافه می‌شود.")
+        msg = "📋 یادداشت‌های شما:\n\n"
 
-    elif text == "🌤 آب و هوا":
-        await update.message.reply_text("🚧 بخش آب‌وهوا به‌زودی اضافه می‌شود.")
+        for note_id, note in notes:
+            msg += f"{note_id}. {note}\n\n"
 
-    elif text == "💱 تبدیل ارز":
-        await update.message.reply_text("🚧 بخش تبدیل ارز به‌زودی اضافه می‌شود.")
+        await update.message.reply_text(msg)
 
-    elif text == "🔑 رمزساز":
-        await update.message.reply_text("🚧 بخش رمزساز به‌زودی اضافه می‌شود.")
-
-    elif text == "⚙️ تنظیمات":
-        await update.message.reply_text("🚧 بخش تنظیمات به‌زودی اضافه می‌شود.")
+    elif text == "👤 پروفایل":
+        user = update.effective_user
+        await update.message.reply_text(
+            f"👤 {user.first_name}\n"
+            f"🆔 {user.id}"
+        )
 
     elif text == "ℹ️ درباره ربات":
         await update.message.reply_text(
-            "🤖 Saye Assistant\n"
-            "نسخه 2.0"
+            "🤖 Saye Assistant\nنسخه 1.0"
         )
 
     else:
-        await update.message.reply_text("❓ این گزینه هنوز پیاده‌سازی نشده است.")
+        await update.message.reply_text("❓ دستور نامعتبر است.")
 
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, menu))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-    print("✅ Saye Assistant Started...")
+    print("✅ Bot Started...")
     app.run_polling()
 
 
